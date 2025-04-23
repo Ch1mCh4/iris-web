@@ -283,6 +283,9 @@ def alerts_update_route(identifier) -> Response:
         alert = alerts_update(request.get_json(), identifier)
         alert_schema = AlertSchema()
         return response_success('Alert updated', data=alert_schema.dump(alert))
+    
+    except ObjectNotFoundError:
+        return response_api_not_found()
 
     except BusinessProcessingError as e:
         return response_error(e.get_message(), data=e.get_data())

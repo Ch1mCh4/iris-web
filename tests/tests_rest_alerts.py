@@ -182,3 +182,16 @@ class TestsRestAlerts(TestCase):
         identifier = response['data']['alert_id']
         response = user.update(f'/api/v2/alerts/{identifier}', {})
         self.assertEqual(403, response.status_code)
+
+    def test_update_alert_should_return_404_when_the_alert_is_not_found(self):
+        alert_title = f'title{uuid4()}'
+        body = {
+            'alert_title': alert_title,
+            'alert_severity_id': 4,
+            'alert_status_id': 3,
+            'alert_customer_id': 1
+        }
+        response = self._subject.create('/alerts/add', body).json()
+        identifier = '_IDENTIFIER_FOR_NONEXISTENT_OBJECT'
+        response = self._subject.update(f'/api/v2/alerts/{identifier}', {})
+        self.assertEqual(404, response.status_code)
