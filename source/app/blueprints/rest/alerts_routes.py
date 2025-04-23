@@ -287,6 +287,7 @@ def alerts_update_route(identifier) -> Response:
     except BusinessProcessingError as e:
         return response_error(e.get_message(), data=e.get_data())
 
+
 @alerts_rest_blueprint.route('/alerts/batch/update', methods=['POST'])
 @ac_api_requires(Permissions.alerts_write)
 def alerts_batch_update_route() -> Response:

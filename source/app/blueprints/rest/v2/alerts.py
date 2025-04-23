@@ -160,9 +160,9 @@ def update_alert(identifier):
     try:
         alert = alerts_update(request.get_json(), identifier)
         return response_api_success(alert)
-    
+
     except ObjectNotFoundError:
         return response_api_not_found()
-    
+
     except BusinessProcessingError as e:
         return response_api_error(e.get_message(), data=e.get_data())
