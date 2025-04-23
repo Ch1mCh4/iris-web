@@ -34,7 +34,6 @@ from app.schema.marshables import AlertSchema
 from app.business.alerts import alerts_create
 from app.business.alerts import alerts_update
 from app.business.errors import BusinessProcessingError
-from app.business.errors import ObjectNotFoundError
 
 
 alerts_blueprint = Blueprint('alerts_rest_v2', __name__, url_prefix='/alerts')
