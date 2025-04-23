@@ -25,6 +25,7 @@ from app import socket_io
 from app.iris_engine.access_control.iris_user import iris_current_user
 from app.models.alerts import Alert
 from app.datamgmt.alerts.alerts_db import cache_similar_alert
+from app.datamgmt.alerts.alerts_db import get_alert_by_id
 from app.datamgmt.manage.manage_access_control_db import user_has_client_access
 from app.iris_engine.module_handler.module_handler import call_modules_hook
 from app.iris_engine.utils.tracker import track_activity
@@ -81,3 +82,63 @@ def alerts_create(request_data) -> Alert:
 
     return alert
 
+def alerts_update(request_data, alert_id) -> Alert:
+
+    alert = get_alert_by_id(alert_id)
+
+    alert_schema = AlertSchema()
+    do_resolution_hook = False
+    do_status_hook = False
+
+    try:
+        activity_data = []
+        for key, value in request_data.items():
+            old_value = getattr(alert, key, None)
+
+            if type(old_value) is int:
+                old_value = str(old_value)
+
+            if type(value) is int:
+                value = str(value)
+
+            if old_value != value:
+                if key == "alert_resolution_status_id":
+                    do_resolution_hook = True
+                if key == 'alert_status_id':
+                    do_status_hook = True
+
+                if key not in ["alert_content", "alert_note"]:
+                    activity_data.append(f"\"{key}\" from \"{old_value}\" to \"{value}\"")
+                else:
+                    activity_data.append(f"\"{key}\"")
+
+        updated_alert = alert_schema.load(request_data, instance=alert, partial=True)
+        if request_data.get('alert_owner_id') is None and updated_alert.alert_owner_id is None:
+            updated_alert.alert_owner_id = iris_current_user.id
+
+        if request_data.get('alert_owner_id') == "-1" or request_data.get('alert_owner_id') == -1:
+            updated_alert.alert_owner_id = None
+
+        db.session.commit()
+
+        updated_alert = call_modules_hook('on_postload_alert_update', data=updated_alert)
+
+        if do_resolution_hook:
+            updated_alert = call_modules_hook('on_postload_alert_resolution_update', data=updated_alert)
+
+        if do_status_hook:
+            updated_alert = call_modules_hook('on_postload_alert_status_update', data=updated_alert)
+
+        if activity_data:
+            activity_data_as_string = ','.join(activity_data)
+            track_activity(f'updated alert #{alert_id}: {activity_data_as_string}', ctx_less=True)
+            add_obj_history_entry(updated_alert, f'updated alert: {activity_data_as_string}')
+        else:
+            track_activity(f'updated alert #{alert_id}', ctx_less=True)
+            add_obj_history_entry(updated_alert, 'updated alert')
+
+        db.session.commit()
+
+        return alert
+    except ValidationError as e:
+        raise BusinessProcessingError('Data error', data=e.normalized_messages())

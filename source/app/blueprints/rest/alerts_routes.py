@@ -43,6 +43,8 @@ from app.datamgmt.alerts.alerts_db import get_alert_comment
 from app.datamgmt.alerts.alerts_db import delete_similar_alert_cache
 from app.datamgmt.alerts.alerts_db import delete_alerts
 from app.datamgmt.alerts.alerts_db import create_case_from_alerts
+from app.business.alerts import alerts_create
+from app.business.alerts import alerts_update
 from app.datamgmt.case.case_db import get_case
 from app.datamgmt.manage.manage_access_control_db import check_ua_case_client
 from app.datamgmt.manage.manage_access_control_db import user_has_client_access
@@ -59,7 +61,6 @@ from app.blueprints.responses import response_error
 from app.util import add_obj_history_entry
 from app.blueprints.responses import response_success
 from app.business.errors import BusinessProcessingError
-from app.business.alerts import alerts_create
 
 alerts_rest_blueprint = Blueprint('alerts_rest', __name__)
 
@@ -274,95 +275,17 @@ def alerts_similarities_route(alert_id) -> Response:
     return response_success(data=similar_alerts)
 
 
-@alerts_rest_blueprint.route('/alerts/update/<int:alert_id>', methods=['POST'])
-@endpoint_deprecated('PUT', '/api/v2/alerts')
+@alerts_rest_blueprint.route('/alerts/update/<int:identifier>', methods=['POST'])
+@endpoint_deprecated('PUT', '/api/v2/alerts/{identifier}')
 @ac_api_requires(Permissions.alerts_write)
-def alerts_update_route(alert_id) -> Response:
-    """
-    Update an alert in the database
-
-    args:
-        caseid (str): The case id
-        alert_id (int): The alert id
-
-    returns:
-        Response: The response
-    """
-    if not request.json:
-        return response_error('No JSON data provided')
-
-    alert = get_alert_by_id(alert_id)
-    if not alert:
-        return response_error('Alert not found')
-    if not user_has_client_access(iris_current_user.id, alert.alert_customer_id):
-        return response_error('User not entitled to update alerts for the client', status=403)
-
-    alert_schema = AlertSchema()
-
-    do_resolution_hook = False
-    do_status_hook = False
-
+def alerts_update_route(identifier) -> Response:
     try:
-        # Load the JSON data from the request
-        data = request.get_json()
+        alert = alerts_update(request.get_json(), identifier)
+        alert_schema = AlertSchema()
+        return response_success('Alert updated', data=alert_schema.dump(alert))
 
-        activity_data = []
-        for key, value in data.items():
-            old_value = getattr(alert, key, None)
-
-            if type(old_value) is int:
-                old_value = str(old_value)
-
-            if type(value) is int:
-                value = str(value)
-
-            if old_value != value:
-                if key == "alert_resolution_status_id":
-                    do_resolution_hook = True
-                if key == 'alert_status_id':
-                    do_status_hook = True
-
-                if key not in ["alert_content", "alert_note"]:
-                    activity_data.append(f"\"{key}\" from \"{old_value}\" to \"{value}\"")
-                else:
-                    activity_data.append(f"\"{key}\"")
-
-        # Deserialize the JSON data into an Alert object
-        updated_alert = alert_schema.load(data, instance=alert, partial=True)
-        if data.get('alert_owner_id') is None and updated_alert.alert_owner_id is None:
-            updated_alert.alert_owner_id = iris_current_user.id
-
-        if data.get('alert_owner_id') == "-1" or data.get('alert_owner_id') == -1:
-            updated_alert.alert_owner_id = None
-
-        # Save the changes
-        db.session.commit()
-
-        updated_alert = call_modules_hook('on_postload_alert_update', data=updated_alert)
-
-        if do_resolution_hook:
-            updated_alert = call_modules_hook('on_postload_alert_resolution_update', data=updated_alert)
-
-        if do_status_hook:
-            updated_alert = call_modules_hook('on_postload_alert_status_update', data=updated_alert)
-
-        if activity_data:
-            activity_data_as_string = ','.join(activity_data)
-            track_activity(f'updated alert #{alert_id}: {activity_data_as_string}', ctx_less=True)
-            add_obj_history_entry(updated_alert, f'updated alert: {activity_data_as_string}')
-        else:
-            track_activity(f'updated alert #{alert_id}', ctx_less=True)
-            add_obj_history_entry(updated_alert, 'updated alert')
-
-        db.session.commit()
-
-        # Return the updated alert as JSON
-        return response_success(data=alert_schema.dump(updated_alert))
-
-    except Exception as e:
-        # Handle any errors during deserialization or DB operations
-        return response_error(str(e))
-
+    except BusinessProcessingError as e:
+        return response_error(e.get_message(), data=e.get_data())
 
 @alerts_rest_blueprint.route('/alerts/batch/update', methods=['POST'])
 @ac_api_requires(Permissions.alerts_write)
