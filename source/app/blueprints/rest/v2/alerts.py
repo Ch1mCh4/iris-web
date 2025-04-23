@@ -153,4 +153,4 @@ def create_alert():
 @alerts_blueprint.put('/<int:identifier>')
 @ac_api_requires(Permissions.alerts_write)
 def update_alert(identifier):
-    return response_api_success(None) 
+    return response_api_success(None)
