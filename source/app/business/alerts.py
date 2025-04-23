@@ -25,6 +25,7 @@ from app import socket_io
 from app.iris_engine.access_control.iris_user import iris_current_user
 from app.models.alerts import Alert
 from app.datamgmt.alerts.alerts_db import cache_similar_alert
+from app.datamgmt.alerts.alerts_db import get_alert_by_id
 from app.datamgmt.manage.manage_access_control_db import user_has_client_access
 from app.iris_engine.module_handler.module_handler import call_modules_hook
 from app.iris_engine.utils.tracker import track_activity
@@ -82,9 +83,10 @@ def alerts_create(request_data) -> Alert:
     return alert
 
 
-def alerts_update(request_data, alert) -> Alert:
+def alerts_update(request_data, alert_id) -> Alert:
 
     alert_schema = AlertSchema()
+    alert = get_alert_by_id(alert_id)
     do_resolution_hook = False
     do_status_hook = False
 
@@ -129,10 +131,10 @@ def alerts_update(request_data, alert) -> Alert:
 
         if activity_data:
             activity_data_as_string = ','.join(activity_data)
-            track_activity(f'updated alert #{alert.alert_id}: {activity_data_as_string}', ctx_less=True)
+            track_activity(f'updated alert #{alert_id}: {activity_data_as_string}', ctx_less=True)
             add_obj_history_entry(updated_alert, f'updated alert: {activity_data_as_string}')
         else:
-            track_activity(f'updated alert #{alert.alert_id}', ctx_less=True)
+            track_activity(f'updated alert #{alert_id}', ctx_less=True)
             add_obj_history_entry(updated_alert, 'updated alert')
 
         db.session.commit()
