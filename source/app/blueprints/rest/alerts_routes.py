@@ -275,6 +275,7 @@ def alerts_similarities_route(alert_id) -> Response:
 
 
 @alerts_rest_blueprint.route('/alerts/update/<int:alert_id>', methods=['POST'])
+@endpoint_deprecated('PUT', '/api/v2/alerts')
 @ac_api_requires(Permissions.alerts_write)
 def alerts_update_route(alert_id) -> Response:
     """
