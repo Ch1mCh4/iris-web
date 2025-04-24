@@ -89,10 +89,6 @@ def alerts_create(request_data) -> Alert:
 
 def alerts_delete(alert_id) -> Alert:
 
-    alert = get_alert_by_id(alert_id)
-    if not alert:
-        return response_error('Alert not found')
-
     try:
 
         if not user_has_client_access(iris_current_user.id, alert.alert_customer_id):

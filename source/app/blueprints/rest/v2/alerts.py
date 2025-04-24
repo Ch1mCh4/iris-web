@@ -25,9 +25,11 @@ from app.blueprints.rest.endpoints import response_api_success
 from app.blueprints.rest.endpoints import response_api_error
 from app.blueprints.rest.endpoints import response_api_created
 from app.blueprints.rest.endpoints import response_api_deleted
+from app.blueprints.rest.endpoints import response_api_not_found
 from app.blueprints.rest.parsing import parse_comma_separated_identifiers
 from app.iris_engine.access_control.iris_user import iris_current_user
 from app.datamgmt.alerts.alerts_db import get_filtered_alerts
+from app.datamgmt.alerts.alerts_db import get_alert_by_id
 from app.models.authorization import Permissions
 from app.schema.marshables import AlertSchema
 from app.business.alerts import alerts_create
@@ -155,7 +157,11 @@ def create_alert():
 @alerts_blueprint.delete('/<int:identifier>')
 @ac_api_requires(Permissions.alerts_write)
 def delete_alert(identifier):
+
     try:
+        alert = get_alert_by_id(identifier)
+        if not alert:
+            return response_api_not_found()
         alerts_delete(identifier)
         return response_api_deleted()
 

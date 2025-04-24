@@ -20,6 +20,8 @@ from unittest import TestCase
 from iris import Iris
 from uuid import uuid4
 
+_IDENTIFIER_FOR_NONEXISTENT_OBJECT = 123456789
+
 
 class TestsRestAlerts(TestCase):
 
@@ -183,3 +185,7 @@ class TestsRestAlerts(TestCase):
         response = self._subject.get('/api/v2/alerts', query_parameters={'alert_id': identifier}).json()
         total = response['total']
         self.assertEqual(0, total)
+
+    def test_delete_alert_should_return_404_when_the_alert__does_not_exist(self):
+        response = self._subject.delete(f'/api/v2/alerts/{_IDENTIFIER_FOR_NONEXISTENT_OBJECT}')
+        self.assertEqual(404, response.status_code)
