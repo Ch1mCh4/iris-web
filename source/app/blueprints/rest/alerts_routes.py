@@ -32,7 +32,6 @@ from app.iris_engine.access_control.iris_user import iris_current_user
 from app.datamgmt.alerts.alerts_db import get_filtered_alerts
 from app.datamgmt.alerts.alerts_db import get_alert_by_id
 from app.datamgmt.alerts.alerts_db import create_case_from_alert
-from app.datamgmt.alerts.alerts_db import delete_related_alerts_cache
 from app.datamgmt.alerts.alerts_db import merge_alert_in_case
 from app.datamgmt.alerts.alerts_db import unmerge_alert_from_case
 from app.datamgmt.alerts.alerts_db import get_related_alerts
@@ -40,7 +39,6 @@ from app.datamgmt.alerts.alerts_db import get_related_alerts_details
 from app.datamgmt.alerts.alerts_db import get_alert_comments
 from app.datamgmt.alerts.alerts_db import delete_alert_comment
 from app.datamgmt.alerts.alerts_db import get_alert_comment
-from app.datamgmt.alerts.alerts_db import delete_similar_alert_cache
 from app.datamgmt.alerts.alerts_db import delete_alerts
 from app.datamgmt.alerts.alerts_db import create_case_from_alerts
 from app.datamgmt.case.case_db import get_case
@@ -60,6 +58,7 @@ from app.util import add_obj_history_entry
 from app.blueprints.responses import response_success
 from app.business.errors import BusinessProcessingError
 from app.business.alerts import alerts_create
+from app.business.alerts import alerts_delete
 
 alerts_rest_blueprint = Blueprint('alerts_rest', __name__)
 
@@ -487,48 +486,13 @@ def alerts_batch_delete_route() -> Response:
 @alerts_rest_blueprint.route('/alerts/delete/<int:alert_id>', methods=['POST'])
 @endpoint_deprecated('DELETE', '/api/v2/alerts/{identifier}')
 @ac_api_requires(Permissions.alerts_delete)
-def alerts_delete_route(alert_id) -> Response:
-    """
-    Delete an alert from the database
-
-    args:
-        caseid (str): The case id
-        alert_id (int): The alert id
-
-    returns:
-        Response: The response
-    """
-
-    alert = get_alert_by_id(alert_id)
-    if not alert:
-        return response_error('Alert not found')
-
+def alerts_delete_route(identifier) -> Response:
     try:
+        alerts_delete(identifier)
+        return response_success('Alert deleted')
 
-        # Check if the user has access to the client
-        if not user_has_client_access(iris_current_user.id, alert.alert_customer_id):
-            return response_error('User not entitled to delete alerts for the client', status=403)
-
-        # Delete the case association
-        delete_similar_alert_cache(alert_id=alert_id)
-
-        # Delete the similarity entries
-        delete_related_alerts_cache([alert_id])
-
-        # Delete the alert from the database
-        db.session.delete(alert)
-        db.session.commit()
-
-        alert = call_modules_hook('on_postload_alert_delete', data=alert_id)
-
-        track_activity(f"delete alert #{alert_id}", ctx_less=True)
-
-        # Return the deleted alert as JSON
-        return response_success(data={'alert_id': alert_id})
-
-    except Exception as e:
-        # Handle any errors during deserialization or DB operations
-        return response_error(str(e))
+    except BusinessProcessingError as e:
+        return response_error(e.get_message(), data=e.get_data())
 
 
 @alerts_rest_blueprint.route('/alerts/escalate/<int:alert_id>', methods=['POST'])

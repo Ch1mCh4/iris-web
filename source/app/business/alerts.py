@@ -25,6 +25,9 @@ from app import socket_io
 from app.iris_engine.access_control.iris_user import iris_current_user
 from app.models.alerts import Alert
 from app.datamgmt.alerts.alerts_db import cache_similar_alert
+from app.datamgmt.alerts.alerts_db import get_alert_by_id
+from app.datamgmt.alerts.alerts_db import delete_similar_alert_cache
+from app.datamgmt.alerts.alerts_db import delete_related_alerts_cache
 from app.datamgmt.manage.manage_access_control_db import user_has_client_access
 from app.iris_engine.module_handler.module_handler import call_modules_hook
 from app.iris_engine.utils.tracker import track_activity
@@ -33,6 +36,8 @@ from app.business.errors import BusinessProcessingError
 from app.schema.marshables import AlertSchema
 from app.schema.marshables import CaseAssetsSchema
 from app.schema.marshables import IocSchema
+from app.blueprints.responses import response_error
+from app.blueprints.responses import response_success
 
 
 def _load(request_data, **kwargs):
@@ -81,3 +86,29 @@ def alerts_create(request_data) -> Alert:
 
     return alert
 
+def alerts_delete(alert_id) -> Alert:
+
+    alert = get_alert_by_id(alert_id)
+    if not alert:
+        return response_error('Alert not found')
+
+    try:
+
+        if not user_has_client_access(iris_current_user.id, alert.alert_customer_id):
+            return response_error('User not entitled to delete alerts for the client', status=403)
+
+        delete_similar_alert_cache(alert_id=alert_id)
+
+        delete_related_alerts_cache([alert_id])
+
+        db.session.delete(alert)
+        db.session.commit()
+
+        alert = call_modules_hook('on_postload_alert_delete', data=alert_id)
+
+        track_activity(f"delete alert #{alert_id}", ctx_less=True)
+
+        return response_success(data={'alert_id': alert_id})
+
+    except ValidationError as e:
+        raise BusinessProcessingError('Data error', data=e.normalized_messages())
