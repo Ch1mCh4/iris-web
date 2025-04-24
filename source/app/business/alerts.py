@@ -87,7 +87,7 @@ def alerts_create(request_data) -> Alert:
     return alert
 
 
-def alerts_delete(alert_id) -> Alert:
+def alerts_delete(alert_id):
 
     alert = get_alert_by_id(alert_id)
 
