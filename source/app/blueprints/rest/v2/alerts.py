@@ -158,6 +158,6 @@ def delete_alert(identifier):
     try:
         alerts_delete(identifier)
         return response_api_deleted()
-    
+
     except BusinessProcessingError as e:
         return response_api_error(e.get_message(), data=e.get_data())
