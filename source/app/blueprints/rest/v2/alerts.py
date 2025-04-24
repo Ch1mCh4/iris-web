@@ -24,6 +24,7 @@ from app.blueprints.access_controls import ac_api_requires
 from app.blueprints.rest.endpoints import response_api_success
 from app.blueprints.rest.endpoints import response_api_error
 from app.blueprints.rest.endpoints import response_api_created
+from app.blueprints.rest.endpoints import response_api_deleted
 from app.blueprints.rest.parsing import parse_comma_separated_identifiers
 from app.iris_engine.access_control.iris_user import iris_current_user
 from app.datamgmt.alerts.alerts_db import get_filtered_alerts
@@ -148,3 +149,8 @@ def create_alert():
 
     except BusinessProcessingError as e:
         return response_api_error(e.get_message(), data=e.get_data())
+    
+@alerts_blueprint.delete('/<int:identifier>')
+@ac_api_requires(Permissions.alerts_write)
+def delete_alert(identifier):
+    return response_api_deleted()

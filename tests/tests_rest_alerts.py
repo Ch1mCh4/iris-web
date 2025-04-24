@@ -155,3 +155,16 @@ class TestsRestAlerts(TestCase):
         response = self._subject.create(f'/alerts/merge/{alert_identifier}', body)
         # TODO should be 201
         self.assertEqual(200, response.status_code)
+    
+    def test_delete_alert_should_return_200(self):
+        alert_title = f'title{uuid4()}'
+        body = {
+            'alert_title': alert_title,
+            'alert_severity_id': 4,
+            'alert_status_id': 3,
+            'alert_customer_id': 1
+        }
+        response = self._subject.create('/alerts/add', body).json()
+        identifier = response['data']['alert_id']
+        response = self._subject.delete(f'/api/v2/alerts/{identifier}')
+        self.assertEqual(204, response.status_code)
