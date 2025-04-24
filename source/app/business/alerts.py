@@ -25,9 +25,9 @@ from app import socket_io
 from app.iris_engine.access_control.iris_user import iris_current_user
 from app.models.alerts import Alert
 from app.datamgmt.alerts.alerts_db import cache_similar_alert
-from app.datamgmt.alerts.alerts_db import get_alert_by_id
 from app.datamgmt.alerts.alerts_db import delete_similar_alert_cache
 from app.datamgmt.alerts.alerts_db import delete_related_alerts_cache
+from app.datamgmt.alerts.alerts_db import get_alert_by_id
 from app.datamgmt.manage.manage_access_control_db import user_has_client_access
 from app.iris_engine.module_handler.module_handler import call_modules_hook
 from app.iris_engine.utils.tracker import track_activity
@@ -89,6 +89,8 @@ def alerts_create(request_data) -> Alert:
 
 def alerts_delete(alert_id) -> Alert:
 
+    alert = get_alert_by_id(alert_id)
+
     try:
 
         if not user_has_client_access(iris_current_user.id, alert.alert_customer_id):
@@ -101,7 +103,7 @@ def alerts_delete(alert_id) -> Alert:
         db.session.delete(alert)
         db.session.commit()
 
-        alert = call_modules_hook('on_postload_alert_delete', data=alert_id)
+        call_modules_hook('on_postload_alert_delete', data=alert_id)
 
         track_activity(f"delete alert #{alert_id}", ctx_less=True)
 
