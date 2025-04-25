@@ -162,7 +162,7 @@ def delete_alert(identifier):
         alert = get_alert_by_id(identifier)
         if not alert:
             return response_api_not_found()
-        alerts_delete(identifier)
+        alerts_delete(alert)
         return response_api_deleted()
 
     except BusinessProcessingError as e:

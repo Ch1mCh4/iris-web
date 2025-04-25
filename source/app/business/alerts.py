@@ -87,27 +87,25 @@ def alerts_create(request_data) -> Alert:
     return alert
 
 
-def alerts_delete(alert_id):
-
-    alert = get_alert_by_id(alert_id)
+def alerts_delete(alert: Alert):
 
     try:
 
         if not user_has_client_access(iris_current_user.id, alert.alert_customer_id):
-            return response_error('User not entitled to delete alerts for the client', status=403)
+            raise BusinessProcessingError('User not entitled to delete alerts for the client')
 
-        delete_similar_alert_cache(alert_id=alert_id)
+        delete_similar_alert_cache(alert_id=alert.alert_id)
 
-        delete_related_alerts_cache([alert_id])
+        delete_related_alerts_cache([alert.alert_id])
 
         db.session.delete(alert)
         db.session.commit()
 
-        call_modules_hook('on_postload_alert_delete', data=alert_id)
+        call_modules_hook('on_postload_alert_delete', data=alert.alert_id)
 
-        track_activity(f"delete alert #{alert_id}", ctx_less=True)
+        track_activity(f"delete alert #{alert.alert_id}", ctx_less=True)
 
-        return response_success(data={'alert_id': alert_id})
+        return response_success(data={'alert_id': alert.alert_id})
 
     except ValidationError as e:
         raise BusinessProcessingError('Data error', data=e.normalized_messages())
