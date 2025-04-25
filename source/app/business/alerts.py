@@ -36,7 +36,6 @@ from app.business.errors import BusinessProcessingError
 from app.schema.marshables import AlertSchema
 from app.schema.marshables import CaseAssetsSchema
 from app.schema.marshables import IocSchema
-from app.blueprints.responses import response_error
 from app.blueprints.responses import response_success
 
 
@@ -87,25 +86,27 @@ def alerts_create(request_data) -> Alert:
     return alert
 
 
-def alerts_delete(alert: Alert):
+def alerts_delete(alert_id):
+
+    alert = get_alert_by_id(alert_id)
 
     try:
 
         if not user_has_client_access(iris_current_user.id, alert.alert_customer_id):
             raise BusinessProcessingError('User not entitled to delete alerts for the client')
 
-        delete_similar_alert_cache(alert_id=alert.alert_id)
+        delete_similar_alert_cache(alert_id=alert_id)
 
-        delete_related_alerts_cache([alert.alert_id])
+        delete_related_alerts_cache([alert_id])
 
         db.session.delete(alert)
         db.session.commit()
 
-        call_modules_hook('on_postload_alert_delete', data=alert.alert_id)
+        call_modules_hook('on_postload_alert_delete', data=alert_id)
 
-        track_activity(f"delete alert #{alert.alert_id}", ctx_less=True)
+        track_activity(f"delete alert #{alert_id}", ctx_less=True)
 
-        return response_success(data={'alert_id': alert.alert_id})
+        return response_success(data={'alert_id': alert_id})
 
     except ValidationError as e:
         raise BusinessProcessingError('Data error', data=e.normalized_messages())
