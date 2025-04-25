@@ -186,6 +186,22 @@ class TestsRestAlerts(TestCase):
         response = self._subject.update(f'/api/v2/alerts/{identifier}',body).json()
         new_title = response['alert_title']
         self.assertEqual(new_title, new_alert_title)
+
+    def test_update_alert_should_return_200_when_alert_context__change(self):
+        alert_title = f'title{uuid4()}'
+        new_alert_context = "test_new_context"
+        body = {
+            'alert_title': alert_title,
+            'alert_severity_id': 4,
+            'alert_status_id': 3,
+            'alert_customer_id': 1
+        }
+        response = self._subject.create('/alerts/add', body).json()
+        identifier = response['data']['alert_id']
+        body = {'alert_context': new_alert_context}
+        response = self._subject.update(f'/api/v2/alerts/{identifier}',body).json()
+        new_context = response['alert_context']
+        self.assertEqual(new_context, new_alert_context)
     
     def test_update_alert_should_return_403_when_user_has_no_permission_to_alert(self):
         user = self._subject.create_dummy_user()
