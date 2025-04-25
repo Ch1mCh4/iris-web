@@ -20,6 +20,8 @@ from unittest import TestCase
 from iris import Iris
 from uuid import uuid4
 
+_IDENTIFIER_FOR_NONEXISTENT_OBJECT = 123456789
+
 
 class TestsRestAlerts(TestCase):
 
@@ -191,7 +193,6 @@ class TestsRestAlerts(TestCase):
             'alert_status_id': 3,
             'alert_customer_id': 1
         }
-        response = self._subject.create('/alerts/add', body).json()
-        identifier = '_IDENTIFIER_FOR_NONEXISTENT_OBJECT'
-        response = self._subject.update(f'/api/v2/alerts/{identifier}', {})
+        self._subject.create('/alerts/add', body).json()
+        response = self._subject.update(f'/api/v2/alerts/{_IDENTIFIER_FOR_NONEXISTENT_OBJECT}', {})
         self.assertEqual(404, response.status_code)
